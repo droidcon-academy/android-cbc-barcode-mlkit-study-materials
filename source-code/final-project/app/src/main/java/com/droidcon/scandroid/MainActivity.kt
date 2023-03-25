@@ -1,5 +1,6 @@
 package com.droidcon.scandroid
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -60,7 +61,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
+    @SuppressLint("ClickableViewAccessibility")
     private fun getPreview(): PreviewView {
         val cameraController = LifecycleCameraController(this)
         val previewView = PreviewView(this)
@@ -92,7 +93,7 @@ class MainActivity : ComponentActivity() {
                 val drawable = QrCodeHighlightDrawable(firstResult.boundingBox!!)
                 previewView.overlay.clear()
                 previewView.overlay.add(drawable)
-                previewView.setOnTouchListener { v, event ->
+                previewView.setOnTouchListener { _, event ->
                     if (event.action == MotionEvent.ACTION_DOWN) {
                         if (firstResult.boundingBox!!.contains(event.x.toInt(), event.y.toInt())) {
                             if (firstResult.valueType == Barcode.TYPE_URL) {

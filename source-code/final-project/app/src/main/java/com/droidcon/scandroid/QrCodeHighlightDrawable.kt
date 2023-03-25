@@ -27,7 +27,7 @@ class QrCodeHighlightDrawable(
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
-        TODO("Not yet implemented")
+        paint.colorFilter = colorFilter
     }
 
     @Deprecated("Deprecated in Java")

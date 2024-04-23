@@ -12,6 +12,7 @@ import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
@@ -28,6 +29,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
+import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +54,7 @@ class MainActivity : ComponentActivity() {
                 cameraPermissionState.launchPermissionRequest()
             }
         } else {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { getPreview() }
@@ -65,39 +67,37 @@ class MainActivity : ComponentActivity() {
     private fun getPreview(): PreviewView {
         val cameraController = LifecycleCameraController(this)
         val previewView = PreviewView(this)
+        cameraController.cameraSelector = CameraSelector.Builder()
+            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+            .build()
 
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
             .build()
         val barcodeScanner = BarcodeScanning.getClient(options)
 
-        cameraController.cameraSelector = CameraSelector.Builder()
-            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-            .build()
-
         cameraController.setImageAnalysisAnalyzer(
-            ContextCompat.getMainExecutor(this),
+            Executors.newSingleThreadExecutor(),
             MlKitAnalyzer(
                 listOf(barcodeScanner),
                 COORDINATE_SYSTEM_VIEW_REFERENCED,
                 ContextCompat.getMainExecutor(this)
             ) { result: MlKitAnalyzer.Result? ->
-                val barcodeResults = result?.getValue(barcodeScanner)
-                if (barcodeResults?.firstOrNull() == null) {
+                val barcodeResult = result?.getValue(barcodeScanner)?.firstOrNull()
+                if (barcodeResult == null) {
                     previewView.overlay.clear()
                     previewView.setOnTouchListener { _, _ -> false } //no-op
                     return@MlKitAnalyzer
                 }
 
-                val firstResult = barcodeResults.first()
-                val drawable = QrCodeHighlightDrawable(firstResult.boundingBox!!)
+                val drawable = QrCodeHighlightDrawable(barcodeResult.boundingBox!!)
                 previewView.overlay.clear()
                 previewView.overlay.add(drawable)
                 previewView.setOnTouchListener { _, event ->
                     if (event.action == MotionEvent.ACTION_DOWN) {
-                        if (firstResult.boundingBox!!.contains(event.x.toInt(), event.y.toInt())) {
-                            if (firstResult.valueType == Barcode.TYPE_URL) {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(firstResult.url!!.url))
+                        if (barcodeResult.boundingBox!!.contains(event.x.toInt(), event.y.toInt())) {
+                            if (barcodeResult.valueType == Barcode.TYPE_URL) {
+                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(barcodeResult.url!!.url))
                                 startActivity(browserIntent)
                             }
                         }
